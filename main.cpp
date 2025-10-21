@@ -1171,17 +1171,17 @@ Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to)
 
 	Matrix4x4 R;
 	R.m[0][0] = cosTheta + n.x * n.x * oneMinusCos;
-	R.m[0][1] = n.x * n.y * oneMinusCos - n.z * sinTheta;
-	R.m[0][2] = n.x * n.z * oneMinusCos + n.y * sinTheta;
+	R.m[0][1] = n.x * n.y * oneMinusCos + n.z * sinTheta;
+	R.m[0][2] = n.x * n.z * oneMinusCos - n.y * sinTheta;
 	R.m[0][3] = 0.0f;
 
-	R.m[1][0] = n.y * n.x * oneMinusCos + n.z * sinTheta;
+	R.m[1][0] = n.y * n.x * oneMinusCos - n.z * sinTheta;
 	R.m[1][1] = cosTheta + n.y * n.y * oneMinusCos;
-	R.m[1][2] = n.y * n.z * oneMinusCos - n.x * sinTheta;
+	R.m[1][2] = n.y * n.z * oneMinusCos + n.x * sinTheta;
 	R.m[1][3] = 0.0f;
 
-	R.m[2][0] = n.z * n.x * oneMinusCos - n.y * sinTheta;
-	R.m[2][1] = n.z * n.y * oneMinusCos + n.x * sinTheta;
+	R.m[2][0] = n.z * n.x * oneMinusCos + n.y * sinTheta;
+	R.m[2][1] = n.z * n.y * oneMinusCos - n.x * sinTheta;
 	R.m[2][2] = cosTheta + n.z * n.z * oneMinusCos;
 	R.m[2][3] = 0.0f;
 
@@ -1300,6 +1300,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	float angle =  0.44f ;
 	Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
 	MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
+	//01_02
+	Vector3 from0 = Normalize(Vector3{ 1.0f,0.7f,0.5f });
+	Vector3 to0 = -from0;
+	Vector3 from1 = Normalize(Vector3{ -0.6f,0.9f,0.2f });
+	Vector3 to1 = Normalize(Vector3{ 0.4f,0.7f,-0.5f });
+	Matrix4x4 rotateMatrix0 = DirectionToDirection(Normalize(Vector3{ 1.0f,0.0f,0.0f }), Normalize(Vector3{ -1.0f,0.0f,0.0f }));
+	Matrix4x4 rotateMatrix1 = DirectionToDirection(from0, to0);
+	Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
 
 #pragma endregion
 
@@ -1549,7 +1557,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		///
 		/// ↓描画処理ここから
 		///
-MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
+//MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
+MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
+MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
+MatrixScreenPrintf(0, kRowHeight * 10, rotateMatrix2, "rotateMatrix2");
 #pragma region 色んな形
 		//地面
 		//DrawGrid(viewProjectionMatrix, viewportMatrix);
