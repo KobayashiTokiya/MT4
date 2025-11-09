@@ -1193,6 +1193,57 @@ Matrix4x4 DirectionToDirection(const Vector3& from, const Vector3& to)
 	return R;
 }
 
+//MT4_01_03
+struct Quaternion
+{
+	float x;
+	float y;
+	float z;
+	float w;
+};
+//Quaternionの積
+Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
+{
+	Quaternion qr = 
+	{
+	   lhs.w* rhs.x + rhs.w * lhs.x + lhs.y * rhs.z - lhs.z * rhs.y,//x
+	   lhs.w* rhs.y + rhs.w * lhs.y + lhs.z * rhs.x - lhs.x * rhs.z,//y
+	   lhs.w* rhs.z + rhs.w * lhs.z + lhs.x * rhs.y - lhs.y * rhs.x,//z
+	   lhs.w* rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z //w
+	};
+	return qr;
+}
+//単位Quaternionを返す
+Quaternion IdentityQuaternion()
+{
+	return { 0.0f, 0.0f, 0.0f, 1.0f };  // (x,y,z,w)
+}
+//共役Quaternionを返す
+Quaternion Conjugate(const Quaternion& quaternion)
+{
+	return { -quaternion.x, -quaternion.y, -quaternion.z, quaternion.w };
+}
+//Quaternionのnormを返す
+float Norm(const Quaternion& quaternion)
+{
+	return static_cast<float>(sqrt(quaternion.x * quaternion.x + quaternion.y * quaternion.y + quaternion.z * quaternion.z + quaternion.w * quaternion.w));
+}
+//正規化したQuaternionを返す
+Quaternion Normalize(const Quaternion& quaternion)
+{
+	float n = Norm(quaternion);
+	if (n == 0.0f) return IdentityQuaternion();
+	return { quaternion.x / n, quaternion.y / n, quaternion.z / n, quaternion.w / n };
+}
+//逆Quaternionを返す
+Quaternion Inverse(const Quaternion& quaternion)
+{
+	float n2 = quaternion.x * quaternion.x + quaternion.y * quaternion.y + quaternion.z * quaternion.z + quaternion.w * quaternion.w;
+	if (n2 == 0.0f) return IdentityQuaternion();
+	Quaternion conj = Conjugate(quaternion);
+	return { conj.x / n2, conj.y / n2, conj.z / n2, conj.w / n2 };
+}
+
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
@@ -1296,7 +1347,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	
 	//MT4
 	//01_01
-	Vector3 axis = Normalize({ 1.0f,1.0f,1.0f });
+	Vector3 axis = Normalize(Vector3{ 1.0f,1.0f,1.0f });
 	float angle =  0.44f ;
 	Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
 	MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
@@ -1308,7 +1359,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Matrix4x4 rotateMatrix0 = DirectionToDirection(Normalize(Vector3{ 1.0f,0.0f,0.0f }), Normalize(Vector3{ -1.0f,0.0f,0.0f }));
 	Matrix4x4 rotateMatrix1 = DirectionToDirection(from0, to0);
 	Matrix4x4 rotateMatrix2 = DirectionToDirection(from1, to1);
-
+	//01_03
+	Quaternion q1 = { 2.0f,3.0f,4.0f,1.0f };
+	Quaternion q2 = { 1.0f,3.0f,5.0f,2.0f };
+	Quaternion identity = IdentityQuaternion();
+	Quaternion conj = Conjugate(q1);
+	Quaternion inv = Inverse(q1);
+	Quaternion normal = Normalize(q1);
+	Quaternion mul1 = Multiply(q1,q2);
+	Quaternion mul2 = Multiply(q2, q1);
+	float norm = Norm(q1);
 #pragma endregion
 
 	//　ウィンドウの×ボタンが押されるまでループ
@@ -1558,9 +1618,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		/// ↓描画処理ここから
 		///
 //MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
-MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
-MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
-MatrixScreenPrintf(0, kRowHeight * 10, rotateMatrix2, "rotateMatrix2");
+//MatrixScreenPrintf(0, 0, rotateMatrix0, "rotateMatrix0");
+//MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
+//MatrixScreenPrintf(0, kRowHeight * 10, rotateMatrix2, "rotateMatrix2");
+
+#pragma region 01_03_Quaternion
+Novice::ScreenPrintf(0, 0,  " %0.2f  %0.2f  %0.2f   %0.2f", identity.x, identity.y, identity.z, identity.w);
+Novice::ScreenPrintf(0, 20, "%0.2f %0.2f %0.2f   %0.2f", conj.x, conj.y, conj.z, conj.w);
+Novice::ScreenPrintf(0, 40, "%0.2f %0.2f %0.2f   %0.2f", inv.x, inv.y, inv.z, inv.w);
+Novice::ScreenPrintf(0, 60, " %0.2f  %0.2f  %0.2f   %0.2f", normal.x, normal.y, normal.z, normal.w);
+Novice::ScreenPrintf(0, 80, " %0.2f  %0.2f %0.2f %0.2f", mul1.x, mul1.y, mul1.z, mul1.w);
+Novice::ScreenPrintf(0, 100," %0.2f %0.2f %0.2f %0.2f", mul2.x, mul2.y, mul2.z, mul2.w);
+Novice::ScreenPrintf(0, 120," %0.2f", norm);
+
+Novice::ScreenPrintf(230, 0,  ":Identity");
+Novice::ScreenPrintf(230, 20, ":Conjugate");
+Novice::ScreenPrintf(230, 40, ":Inverse");
+Novice::ScreenPrintf(230, 60, ":Normalize");
+Novice::ScreenPrintf(230, 80, ":Multiply(q1,q2)");
+Novice::ScreenPrintf(230, 100,":Multiply(q2,q1)");
+Novice::ScreenPrintf(230, 120,":Norm");
+#pragma endregion
+
 #pragma region 色んな形
 		//地面
 		//DrawGrid(viewProjectionMatrix, viewportMatrix);
