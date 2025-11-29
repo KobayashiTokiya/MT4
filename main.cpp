@@ -1243,8 +1243,96 @@ Quaternion Inverse(const Quaternion& quaternion)
 	Quaternion conj = Conjugate(quaternion);
 	return { conj.x / n2, conj.y / n2, conj.z / n2, conj.w / n2 };
 }
+//任意軸回転を表すQuaternionの生成
+Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle)
+{
+	// 軸を正規化
+	Vector3 n = Normalize(axis);   // ここはユーザーのVector3に合わせて書いてね
 
+	float half = angle * 0.5f;
+	float s = sinf(half);
+	float c = cosf(half);
 
+	Quaternion q;
+	q.w = c;
+	q.x = n.x * s;
+	q.y = n.y * s;
+	q.z = n.z * s;
+
+	return q;
+}
+//ベクトルをQuaternionで回転させた結果のベクトルを求める
+Vector3 RotateVector(const Vector3& vector, const Quaternion& quaternion)
+{
+	// 内積
+	float dotUV = quaternion.x * vector.x + quaternion.y * vector.y + quaternion.z * vector.z;
+
+	// 2つ目の内積（quaternion・quaternion）= (q.x^2 + q.y^2 + q.z^2)
+	float dotUU = quaternion.x * quaternion.x + quaternion.y * quaternion.y + quaternion.z * quaternion.z;
+
+	// 2(quaternion・v)quaternion + (w^2 - quaternion・quaternion)v + 2w(quaternion × v)
+	Vector3 cross = {
+		quaternion.y * vector.z - quaternion.z * vector.y,
+		quaternion.z * vector.x - quaternion.x * vector.z,
+		quaternion.x * vector.y - quaternion.y * vector.x
+	};
+
+	Vector3 result;
+	result.x = 2.0f * dotUV * quaternion.x +
+		(quaternion.w * quaternion.w - dotUU) * vector.x +
+		2.0f * quaternion.w * cross.x;
+
+	result.y = 2.0f * dotUV * quaternion.y +
+		(quaternion.w * quaternion.w - dotUU) * vector.y +
+		2.0f * quaternion.w * cross.y;
+
+	result.z = 2.0f * dotUV * quaternion.z +
+		(quaternion.w * quaternion.w - dotUU) * vector.z +
+		2.0f * quaternion.w * cross.z;
+
+	return result;
+}
+//Quaternionから回転行列を求める
+Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion)
+{
+	Matrix4x4 m{};
+
+	float xx = quaternion.x * quaternion.x;
+	float yy = quaternion.y * quaternion.y;
+	float zz = quaternion.z * quaternion.z;
+
+	float xy = quaternion.x * quaternion.y;
+	float xz = quaternion.x * quaternion.z;
+	float yz = quaternion.y * quaternion.z;
+
+	float wx = quaternion.w * quaternion.x;
+	float wy = quaternion.w * quaternion.y;
+	float wz = quaternion.w * quaternion.z;
+
+	// 行列の各要素
+	m.m[0][0] = 1.0f - 2.0f * (yy + zz);
+	m.m[0][1] = 2.0f * (xy + wz);
+	m.m[0][2] = 2.0f * (xz - wy);
+	m.m[0][3] = 0.0f;
+
+	m.m[1][0] = 2.0f * (xy - wz);
+	m.m[1][1] = 1.0f - 2.0f * (xx + zz);
+	m.m[1][2] = 2.0f * (yz + wx);
+	m.m[1][3] = 0.0f;
+
+	m.m[2][0] = 2.0f * (xz + wy);
+	m.m[2][1] = 2.0f * (yz - wx);
+	m.m[2][2] = 1.0f - 2.0f * (xx + yy);
+	m.m[2][3] = 0.0f;
+
+	// 最後の行
+	m.m[3][0] = 0.0f;
+	m.m[3][1] = 0.0f;
+	m.m[3][2] = 0.0f;
+	m.m[3][3] = 1.0f;
+
+	return m;
+}
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -1368,7 +1456,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Quaternion normal = Normalize(q1);
 	Quaternion mul1 = Multiply(q1,q2);
 	Quaternion mul2 = Multiply(q2, q1);
-	float norm = Norm(q1);
+	//float norm = Norm(q1);
+	//01_04
+	Quaternion rotation = MakeRotateAxisAngleQuaternion(Normalize(Vector3{ 1.0f,0.4f,-0.2f }), 0.45f);
+	Vector3 pointY = { 2.1f,-0.9f,1.3f };
+	rotateMatrix = MakeRotateMatrix(rotation);
+	Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
+	Vector3 rotateByMatrix = Transform(pointY, rotateMatrix);
+
 #pragma endregion
 
 	//　ウィンドウの×ボタンが押されるまでループ
@@ -1622,23 +1717,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 //MatrixScreenPrintf(0, kRowHeight*5, rotateMatrix1, "rotateMatrix1");
 //MatrixScreenPrintf(0, kRowHeight * 10, rotateMatrix2, "rotateMatrix2");
 
-#pragma region 01_03_Quaternion
-Novice::ScreenPrintf(0, 0,  " %0.2f  %0.2f  %0.2f   %0.2f", identity.x, identity.y, identity.z, identity.w);
-Novice::ScreenPrintf(0, 20, "%0.2f %0.2f %0.2f   %0.2f", conj.x, conj.y, conj.z, conj.w);
-Novice::ScreenPrintf(0, 40, "%0.2f %0.2f %0.2f   %0.2f", inv.x, inv.y, inv.z, inv.w);
-Novice::ScreenPrintf(0, 60, " %0.2f  %0.2f  %0.2f   %0.2f", normal.x, normal.y, normal.z, normal.w);
-Novice::ScreenPrintf(0, 80, " %0.2f  %0.2f %0.2f %0.2f", mul1.x, mul1.y, mul1.z, mul1.w);
-Novice::ScreenPrintf(0, 100," %0.2f %0.2f %0.2f %0.2f", mul2.x, mul2.y, mul2.z, mul2.w);
-Novice::ScreenPrintf(0, 120," %0.2f", norm);
 
-Novice::ScreenPrintf(230, 0,  ":Identity");
-Novice::ScreenPrintf(230, 20, ":Conjugate");
-Novice::ScreenPrintf(230, 40, ":Inverse");
-Novice::ScreenPrintf(230, 60, ":Normalize");
-Novice::ScreenPrintf(230, 80, ":Multiply(q1,q2)");
-Novice::ScreenPrintf(230, 100,":Multiply(q2,q1)");
-Novice::ScreenPrintf(230, 120,":Norm");
-#pragma endregion
 
 #pragma region 色んな形
 		//地面
@@ -1672,6 +1751,30 @@ Novice::ScreenPrintf(230, 120,":Norm");
 		//DrawSegment(forearm, viewProjectionMatrix, viewportMatrix, forearm.color);
 #pragma endregion
 
+#pragma region 01_03_Quaternion
+//Novice::ScreenPrintf(0, 0,  " %0.2f  %0.2f  %0.2f   %0.2f", identity.x, identity.y, identity.z, identity.w);
+//Novice::ScreenPrintf(0, 20, "%0.2f %0.2f %0.2f   %0.2f", conj.x, conj.y, conj.z, conj.w);
+//Novice::ScreenPrintf(0, 40, "%0.2f %0.2f %0.2f   %0.2f", inv.x, inv.y, inv.z, inv.w);
+//Novice::ScreenPrintf(0, 60, " %0.2f  %0.2f  %0.2f   %0.2f", normal.x, normal.y, normal.z, normal.w);
+//Novice::ScreenPrintf(0, 80, " %0.2f  %0.2f %0.2f %0.2f", mul1.x, mul1.y, mul1.z, mul1.w);
+//Novice::ScreenPrintf(0, 100," %0.2f %0.2f %0.2f %0.2f", mul2.x, mul2.y, mul2.z, mul2.w);
+//Novice::ScreenPrintf(0, 120," %0.2f", norm);
+//
+//Novice::ScreenPrintf(230, 0,  ":Identity");
+//Novice::ScreenPrintf(230, 20, ":Conjugate");
+//Novice::ScreenPrintf(230, 40, ":Inverse");
+//Novice::ScreenPrintf(230, 60, ":Normalize");
+//Novice::ScreenPrintf(230, 80, ":Multiply(q1,q2)");
+//Novice::ScreenPrintf(230, 100,":Multiply(q2,q1)");
+//Novice::ScreenPrintf(230, 120,":Norm");
+#pragma endregion
+
+//01_04
+Novice::ScreenPrintf(0, 0, " %0.2f  %0.2f  %0.2f   %0.2f     : rotation\n", rotation.x, rotation.y, rotation.z, rotation.w);
+Novice::ScreenPrintf(0,20, "rotateMatrix");
+MatrixScreenPrintf(0, kRowHeight * 2, rotateMatrix, "rotateMatrix");
+VectorScreenPrintf(0, kRowHeight * 7, rotateByQuaternion, ": rotateByQuaternion");
+VectorScreenPrintf(0, kRowHeight * 8, rotateByMatrix, ": rotateByMatrix");
 		///
 		/// ↑描画処理ここまで
 		///
