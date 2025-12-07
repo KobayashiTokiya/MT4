@@ -1053,18 +1053,18 @@ void DrawBezier(const Vector3& controlPoint0, const Vector3& controlPoint1, cons
 #pragma endregion
 
 static const int kRowHeight = 20;
-	void MatrixScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label)
+void MatrixScreenPrintf(int x, int y, const Matrix4x4& matrix, const char* label)
+{
+	for (int row = 0; row < 4; ++row)
 	{
-		for (int row = 0; row < 4; ++row)
+		for (int column = 0; column < 4; ++column)
 		{
-			for (int column = 0; column < 4; ++column)
-			{
-				Novice::ScreenPrintf(
-					x + column * kColumnWidth, y + row * kRowHeight, "%6.03f", matrix.m[row][column], label);
-			}
+			Novice::ScreenPrintf(
+				x + column * kColumnWidth, y + row * kRowHeight, "%6.03f", matrix.m[row][column], label);
 		}
-
 	}
+
+}
 
 #pragma region 演算子オーバーロード
 //二項演算子
@@ -1090,7 +1090,7 @@ Matrix4x4 MakeRotateAxisAngle(const Vector3& axis, float angle)
 {
 	Vector3 n = Normalize(axis);
 	float c = static_cast<float>(cos(angle));
-	float s = static_cast<float>( sin(angle));
+	float s = static_cast<float>(sin(angle));
 	float oneMinusC = 1.0f - c;
 
 	Matrix4x4 R;
@@ -1204,12 +1204,12 @@ struct Quaternion
 //Quaternionの積
 Quaternion Multiply(const Quaternion& lhs, const Quaternion& rhs)
 {
-	Quaternion qr = 
+	Quaternion qr =
 	{
-	   lhs.w* rhs.x + rhs.w * lhs.x + lhs.y * rhs.z - lhs.z * rhs.y,//x
-	   lhs.w* rhs.y + rhs.w * lhs.y + lhs.z * rhs.x - lhs.x * rhs.z,//y
-	   lhs.w* rhs.z + rhs.w * lhs.z + lhs.x * rhs.y - lhs.y * rhs.x,//z
-	   lhs.w* rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z //w
+	   lhs.w * rhs.x + rhs.w * lhs.x + lhs.y * rhs.z - lhs.z * rhs.y,//x
+	   lhs.w * rhs.y + rhs.w * lhs.y + lhs.z * rhs.x - lhs.x * rhs.z,//y
+	   lhs.w * rhs.z + rhs.w * lhs.z + lhs.x * rhs.y - lhs.y * rhs.x,//z
+	   lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z //w
 	};
 	return qr;
 }
@@ -1243,6 +1243,7 @@ Quaternion Inverse(const Quaternion& quaternion)
 	Quaternion conj = Conjugate(quaternion);
 	return { conj.x / n2, conj.y / n2, conj.z / n2, conj.w / n2 };
 }
+//01_04
 //任意軸回転を表すQuaternionの生成
 Quaternion MakeRotateAxisAngleQuaternion(const Vector3& axis, float angle)
 {
@@ -1333,6 +1334,44 @@ Matrix4x4 MakeRotateMatrix(const Quaternion& quaternion)
 
 	return m;
 }
+//01_05
+//球面線形補間
+Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t)
+{
+	// q0 と q1 の内積
+	float dot = q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w;
+
+	Quaternion q1Copy = q1; // 反転用のコピー
+
+	if (dot < 0.0f)
+	{	
+		//もう片方の回転の利用する
+		q1Copy.x = -q1Copy.x;
+		q1Copy.y = -q1Copy.y;
+		q1Copy.z = -q1Copy.z;
+		q1Copy.w = -q1Copy.w;
+		//内積も反転
+		dot = -dot;
+	}
+
+	// なす角 θ を求める
+	float theta =float( acos(dot));
+
+	//thetaとsinを使って補間係数scale0,scale1を求める
+	float sinTheta =float(sin(theta));
+	float scale0 = float(sin((1.0f - t) * theta) / sinTheta);
+	float scale1 = float(sin(t * theta) / sinTheta);
+
+	//それぞれの補間係数を利用して補間後のQuaternionを求める
+	Quaternion result{
+		scale0 * q0.x + scale1 * q1Copy.x,
+		scale0 * q0.y + scale1 * q1Copy.y,
+		scale0 * q0.z + scale1 * q1Copy.z,
+		scale0 * q0.w + scale1 * q1Copy.w
+	};
+	return result;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
@@ -1432,11 +1471,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		{1.0f,1.0f,1.0f},
 		{1.0f,1.0f,1.0f},
 	};
-	
+
 	//MT4
 	//01_01
 	Vector3 axis = Normalize(Vector3{ 1.0f,1.0f,1.0f });
-	float angle =  0.44f ;
+	float angle = 0.44f;
 	Matrix4x4 rotateMatrix = MakeRotateAxisAngle(axis, angle);
 	MatrixScreenPrintf(0, 0, rotateMatrix, "rotateMatrix");
 	//01_02
@@ -1454,7 +1493,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Quaternion conj = Conjugate(q1);
 	Quaternion inv = Inverse(q1);
 	Quaternion normal = Normalize(q1);
-	Quaternion mul1 = Multiply(q1,q2);
+	Quaternion mul1 = Multiply(q1, q2);
 	Quaternion mul2 = Multiply(q2, q1);
 	//float norm = Norm(q1);
 	//01_04
@@ -1463,7 +1502,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	rotateMatrix = MakeRotateMatrix(rotation);
 	Vector3 rotateByQuaternion = RotateVector(pointY, rotation);
 	Vector3 rotateByMatrix = Transform(pointY, rotateMatrix);
-
+	//01_05
+	Quaternion rotation0 = MakeRotateAxisAngleQuaternion({ 0.71f,0.71f,0.0f }, 0.3f);
+	Quaternion rotation1 = MakeRotateAxisAngleQuaternion({ 0.71f,0.0f,0.71f }, 3.141592f);
+	Quaternion interpolate0 = Slerp(rotation0, rotation1, 0.0f);
+	Quaternion interpolate1 = Slerp(rotation0, rotation1, 0.3f);
+	Quaternion interpolate2 = Slerp(rotation0, rotation1, 0.5f);
+	Quaternion interpolate3 = Slerp(rotation0, rotation1, 0.7f);
+	Quaternion interpolate4 = Slerp(rotation0, rotation1, 1.0f);
 #pragma endregion
 
 	//　ウィンドウの×ボタンが押されるまでループ
@@ -1501,7 +1547,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
 		Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
 		Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
-	//	Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
+		//	Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
 #pragma endregion
 
 #pragma region ImGui
@@ -1770,16 +1816,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 #pragma endregion
 
 //01_04
-Novice::ScreenPrintf(0, 0, " %0.2f  %0.2f  %0.2f   %0.2f     : rotation\n", rotation.x, rotation.y, rotation.z, rotation.w);
-Novice::ScreenPrintf(0,20, "rotateMatrix");
-MatrixScreenPrintf(0, kRowHeight * 2, rotateMatrix, "rotateMatrix");
-VectorScreenPrintf(0, kRowHeight * 7, rotateByQuaternion, ": rotateByQuaternion");
-VectorScreenPrintf(0, kRowHeight * 8, rotateByMatrix, ": rotateByMatrix");
+		//Novice::ScreenPrintf(0, 0, " %0.2f  %0.2f  %0.2f   %0.2f     : rotation\n", rotation.x, rotation.y, rotation.z, rotation.w);
+		//Novice::ScreenPrintf(0, 20, "rotateMatrix");
+		//MatrixScreenPrintf(0, kRowHeight * 2, rotateMatrix, "rotateMatrix");
+		//VectorScreenPrintf(0, kRowHeight * 7, rotateByQuaternion, ": rotateByQuaternion");
+		//VectorScreenPrintf(0, kRowHeight * 8, rotateByMatrix, ": rotateByMatrix");
+		//01_05
+		Novice::ScreenPrintf(0, 0, " %0.2f  %0.2f  %0.2f   %0.2f     : interpolate0,Sclerp(q0,q1,0.0f)\n", interpolate0.x, interpolate0.y, interpolate0.z, interpolate0.w);
+		Novice::ScreenPrintf(0, 20, " %0.2f  %0.2f  %0.2f   %0.2f     : interpolate1,Sclerp(q0,q1,0.3f)\n", interpolate1.x, interpolate1.y, interpolate1.z, interpolate1.w);
+		Novice::ScreenPrintf(0, 40, " %0.2f  %0.2f  %0.2f   %0.2f     : interpolate2,Sclerp(q0,q1,0.5f)\n", interpolate2.x, interpolate2.y, interpolate2.z, interpolate2.w);
+		Novice::ScreenPrintf(0, 60, " %0.2f  %0.2f  %0.2f   %0.2f     : interpolate3,Sclerp(q0,q1,0.7f)\n", interpolate3.x, interpolate3.y, interpolate3.z, interpolate3.w);
+		Novice::ScreenPrintf(0, 80, " %0.2f  %0.2f  %0.2f   %0.2f     : interpolate4,Sclerp(q0,q1,1.0f)\n", interpolate4.x, interpolate4.y, interpolate4.z, interpolate4.w);
+	
 		///
 		/// ↑描画処理ここまで
 		///
 
-		// フレームの終了
+				// フレームの終了
 		Novice::EndFrame();
 
 		// ESCキーが押されたらループを抜ける
